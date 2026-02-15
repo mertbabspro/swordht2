@@ -12,7 +12,7 @@ const logFile = path.join(__dirname, 'chat_logs.txt');
 const bot = mineflayer.createBot({
   host: 'zurnacraft.net', // Sunucu adresini buraya yaz
   port: 25565, // Port numarası (varsayılan 25565)
-  username: 'swordht3',
+  username: 'fiategea',
   version: false, // false = otomatik sürüm algılama (önerilen)
   auth: 'offline', // Cracked sunucu için
   hideErrors: false, // Hataları göster
@@ -75,7 +75,7 @@ bot.on('spawn', () => {
   // 3 saniye bekle ve login yap
   setTimeout(() => {
     try {
-      bot.chat('/login benbitben');
+      bot.chat('/login ALLAHUEKBER');
       console.log('Login komutu gönderildi');
       logChat('Login komutu gönderildi: /login benbitben');
     } catch (error) {
@@ -137,7 +137,7 @@ bot.on('spawn', () => {
         setTimeout(() => {
           try {
             if (bot.entity) {
-              bot.chat('/afk');
+              bot.chat('/home 2');
               console.log('AFK komutu gönderildi');
               logChat('AFK komutu gönderildi: /afk');
             }
