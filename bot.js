@@ -13,13 +13,16 @@ const bot = mineflayer.createBot({
   host: 'zurnacraft.net', // Sunucu adresini buraya yaz
   port: 25565, // Port numarası (varsayılan 25565)
   username: 'swordht3',
-  version: '1.21', // Sürümü sunucuya göre ayarla (1.21.8 yerine 1.21 kullan)
-  auth: 'offline' // Cracked sunucu için
+  version: false, // false = otomatik sürüm algılama (önerilen)
+  auth: 'offline', // Cracked sunucu için
+  hideErrors: false, // Hataları göster
+  checkTimeoutInterval: 30000, // 30 saniye timeout kontrolü
+  logErrors: true
 });
 
 // Discord webhook'a mesaj gönderme fonksiyonu
 async function sendToWebhook(message) {
-  if (WEBHOOK_URL === 'WEBHOOK_URL_BURAYA') return;
+  if (WEBHOOK_URL === 'https://discord.com/api/webhooks/1472512420596682868/VroXQPP1o6aXYevIiYFc25jmjVxPYNEyQR40B269IJDvMQY6OM3XdPfoEVphZu--bMrO') return;
   
   try {
     const https = require('https');
@@ -64,20 +67,32 @@ function logChat(message) {
   sendToWebhook(`[${timestamp}] ${message}`);
 }
 
-// Bot spawn olduğunda
-bot.once('spawn', () => {
+// Bot spawn olduğunda (her seferinde çalışır)
+bot.on('spawn', () => {
   console.log('Bot sunucuya bağlandı!');
   logChat('Bot sunucuya bağlandı');
   
   // 3 saniye bekle ve login yap
   setTimeout(() => {
-    bot.chat('/login benbitben');
-    console.log('Login komutu gönderildi');
-    logChat('Login komutu gönderildi: /login benbitben');
+    try {
+      bot.chat('/login benbitben');
+      console.log('Login komutu gönderildi');
+      logChat('Login komutu gönderildi: /login benbitben');
+    } catch (error) {
+      console.error('Login hatası:', error);
+      logChat(`HATA: Login - ${error.message}`);
+      return;
+    }
     
     // 3 saniye sonra envanter işlemlerini yap
     setTimeout(async () => {
       try {
+        // Bot hala bağlı mı kontrol et
+        if (!bot.entity) {
+          logChat('HATA: Bot entity bulunamadı, işlemler iptal edildi');
+          return;
+        }
+        
         // 5. slotu seç (index 4, çünkü 0'dan başlar)
         bot.setQuickBarSlot(4);
         console.log('5. slot seçildi');
@@ -85,6 +100,12 @@ bot.once('spawn', () => {
         
         // 3 saniye bekle
         await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Bot hala bağlı mı kontrol et
+        if (!bot.entity) {
+          logChat('HATA: Bot bağlantısı kesildi');
+          return;
+        }
         
         // Sağ tık (eşyayı kullan)
         bot.activateItem();
@@ -107,13 +128,23 @@ bot.once('spawn', () => {
           
           // Pencereyi kapat
           bot.closeWindow(window);
+          logChat('Pencere kapatıldı');
+        } else {
+          logChat('UYARI: Pencere açılmadı, 24. slot işlemi atlandı');
         }
         
         // 3 saniye sonra AFK yap
         setTimeout(() => {
-          bot.chat('/afk');
-          console.log('AFK komutu gönderildi');
-          logChat('AFK komutu gönderildi: /afk');
+          try {
+            if (bot.entity) {
+              bot.chat('/afk');
+              console.log('AFK komutu gönderildi');
+              logChat('AFK komutu gönderildi: /afk');
+            }
+          } catch (error) {
+            console.error('AFK hatası:', error);
+            logChat(`HATA: AFK komutu - ${error.message}`);
+          }
         }, 3000);
         
       } catch (error) {
@@ -138,8 +169,21 @@ bot.on('whisper', (username, message) => {
 
 // Kick edilirse
 bot.on('kicked', (reason) => {
-  console.log('Bot kicklendi:', reason);
-  logChat(`Bot sunucudan kicklendi: ${reason}`);
+  let kickReason = reason;
+  try {
+    // NBT objesini string'e çevir
+    if (typeof reason === 'object' && reason !== null) {
+      kickReason = JSON.stringify(reason, null, 2);
+      // Eğer text alanı varsa onu al
+      if (reason.value && reason.value.text && reason.value.text.value) {
+        kickReason = reason.value.text.value;
+      }
+    }
+  } catch (e) {
+    kickReason = String(reason);
+  }
+  console.log('Bot kicklendi:', kickReason);
+  logChat(`Bot sunucudan kicklendi: ${kickReason}`);
 });
 
 // Hata durumunda
@@ -152,6 +196,14 @@ bot.on('error', (err) => {
 bot.on('end', () => {
   console.log('Bot bağlantısı kesildi');
   logChat('Bot bağlantısı sonlandı');
+  
+  // 5 saniye sonra yeniden bağlan
+  console.log('5 saniye sonra yeniden bağlanılacak...');
+  setTimeout(() => {
+    console.log('Yeniden başlatılıyor...');
+    // Bot'u yeniden başlatmak için process'i yeniden başlat
+    process.exit(1); // PM2 veya nodemon gibi bir process manager kullanılıyorsa otomatik restart yapar
+  }, 5000);
 });
 
 console.log('Bot başlatılıyor...');
